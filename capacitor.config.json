@@ -1,0 +1,12 @@
+{
+  "appId": "com.kangyewon.holidaychecklist",
+  "appName": "여행 체크리스트",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#ffffff",
+    "allowMixedContent": true
+  }
+}

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>여행 체크리스트</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 1. 홈 화면 (Home) -->
+    <section id="view-home" class="view active">
+      <header class="app-header">
+        <div class="header-brand">
+          <span class="brand-icon">✈️</span>
+          <h1 class="brand-title">여행 체크리스트</h1>
+        </div>
+        <button id="btn-open-settings" class="icon-btn" aria-label="여행 관리 및 설정">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      </header>
+
+      <main class="view-content">
+        <div class="section-title-wrap">
+          <h2 class="section-title">내 여행 목록</h2>
+          <span id="trip-count-badge" class="count-badge">0개</span>
+        </div>
+
+        <!-- 저장된 여행 카드 목록 -->
+        <div id="trip-cards-container" class="trip-cards-list">
+          <!-- 동적으로 렌더링됨 -->
+        </div>
+
+        <!-- 저장된 여행이 없을 때 표시되는 빈 화면 -->
+        <div id="empty-state" class="empty-state-card hidden">
+          <div class="empty-illustration">🧳</div>
+          <h3 class="empty-title">새로운 여행 체크리스트를 만들어 보세요!</h3>
+          <p class="empty-desc">여행 기간만 입력하면 옷, 샤워도구 등 필요한 물품이 자동으로 준비됩니다.</p>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <button id="btn-start" class="btn btn-primary btn-large btn-glow">
+          <span class="btn-text">START</span>
+          <span class="btn-subtext">+ 새 여행 체크리스트 만들기</span>
+        </button>
+      </footer>
+    </section>
+
+    <!-- 2. 새 여행 체크리스트 생성 화면 (Create) -->
+    <section id="view-create" class="view">
+      <header class="app-header sub-header">
+        <button id="btn-create-back" class="icon-btn" aria-label="뒤로가기">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 class="header-title">새 여행 체크리스트</h1>
+        <div class="header-placeholder"></div>
+      </header>
+
+      <main class="view-content form-content">
+        <!-- 3-1, 3-2 여행 정보 입력 영역 -->
+        <div class="input-card">
+          <div class="form-group">
+            <label for="create-trip-name" class="form-label">여행 이름</label>
+            <input type="text" id="create-trip-name" class="form-input" placeholder="예: 제주도 여행, 여름휴가, 일본 여행" maxlength="30" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="create-trip-nights" class="form-label">여행 기간 (숙박 일수)</label>
+            <div class="nights-stepper">
+              <button type="button" id="btn-nights-minus" class="stepper-btn" aria-label="1박 줄이기">−</button>
+              <div class="stepper-input-wrap">
+                <input type="number" id="create-trip-nights" class="stepper-input" value="2" min="1" max="90" inputmode="numeric">
+                <span class="stepper-unit">박</span>
+              </div>
+              <button type="button" id="btn-nights-plus" class="stepper-btn" aria-label="1박 늘리기">+</button>
+            </div>
+
+            <!-- 빠른 기간 선택 칩 -->
+            <div class="quick-chips">
+              <button type="button" class="chip-btn" data-nights="1">1박</button>
+              <button type="button" class="chip-btn active" data-nights="2">2박</button>
+              <button type="button" class="chip-btn" data-nights="3">3박</button>
+              <button type="button" class="chip-btn" data-nights="4">4박</button>
+              <button type="button" class="chip-btn" data-nights="5">5박</button>
+            </div>
+
+            <!-- 자동 계산 결과 알림 배너 -->
+            <div class="duration-banner">
+              <span class="banner-icon">🗓️</span>
+              <div class="banner-text">
+                <span class="banner-highlight" id="create-duration-calc">2박 → 3일</span>
+                <span class="banner-sub" id="create-duration-summary">(2박 3일 여행)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3-3 카테고리 체크리스트 실시간 생성 영역 -->
+        <div class="preview-section-header">
+          <h2 class="preview-title">체크리스트 미리보기 및 편집</h2>
+          <span class="preview-desc">아래 물품을 미리 확인하고 필요 시 추가할 수 있습니다.</span>
+        </div>
+
+        <div id="create-categories-container" class="categories-list">
+          <!-- 동적으로 렌더링됨 -->
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <button id="btn-save-checklist" class="btn btn-primary btn-large btn-save">
+          <span class="btn-text">SAVE</span>
+          <span class="btn-subtext">체크리스트 저장하기</span>
+        </button>
+      </footer>
+    </section>
+
+    <!-- 3. 저장된 여행 체크리스트 상세 화면 (Detail) -->
+    <section id="view-detail" class="view">
+      <header class="app-header sub-header">
+        <button id="btn-detail-back" class="icon-btn" aria-label="홈으로 돌아가기">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 id="detail-header-title" class="header-title">여행 체크리스트</h1>
+        <div class="autosave-tag" id="detail-autosave-tag">
+          <span>✓ 자동 저장됨</span>
+        </div>
+      </header>
+
+      <main class="view-content detail-content">
+        <!-- 여행 정보 헤더 카드 -->
+        <div class="detail-summary-card">
+          <div class="summary-top">
+            <h2 id="detail-trip-name" class="detail-trip-name">여행 이름</h2>
+            <span id="detail-duration-badge" class="badge badge-blue">2박 3일</span>
+          </div>
+
+          <!-- 기간 수정 토글 -->
+          <div class="duration-adjuster">
+            <span class="adjuster-label">숙박 일수 변경:</span>
+            <div class="mini-stepper">
+              <button type="button" id="btn-detail-nights-minus" class="mini-stepper-btn">−</button>
+              <span id="detail-nights-display" class="mini-stepper-val">2박</span>
+              <button type="button" id="btn-detail-nights-plus" class="mini-stepper-btn">+</button>
+            </div>
+          </div>
+
+          <!-- 진행도 게이지 -->
+          <div class="progress-wrap">
+            <div class="progress-info">
+              <span class="progress-label">준비 완료</span>
+              <span id="detail-progress-ratio" class="progress-ratio">0 / 0 (0%)</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="detail-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 카테고리 체크리스트 영역 -->
+        <div id="detail-categories-container" class="categories-list">
+          <!-- 동적으로 렌더링됨 -->
+        </div>
+      </main>
+    </section>
+
+    <!-- 4. 여행 관리 / 삭제 화면 (Settings) -->
+    <section id="view-settings" class="view">
+      <header class="app-header sub-header">
+        <button id="btn-settings-back" class="icon-btn" aria-label="홈으로 돌아가기">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 class="header-title">저장된 여행 관리</h1>
+        <div class="header-placeholder"></div>
+      </header>
+
+      <main class="view-content settings-content">
+        <div class="settings-toolbar">
+          <label class="select-all-label">
+            <input type="checkbox" id="checkbox-select-all" class="app-checkbox">
+            <span>전체 선택</span>
+          </label>
+          <span id="selected-delete-count" class="selected-count-badge">0개 선택</span>
+        </div>
+
+        <div id="settings-trip-list" class="settings-trip-list">
+          <!-- 동적으로 렌더링됨 -->
+        </div>
+
+        <div id="settings-empty-state" class="empty-state-card hidden">
+          <div class="empty-illustration">📂</div>
+          <h3 class="empty-title">관리할 여행이 없습니다.</h3>
+          <p class="empty-desc">새로운 여행 체크리스트를 만들어 보세요.</p>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <button id="btn-delete-selected" class="btn btn-danger btn-large" disabled>
+          <span class="btn-text">선택한 여행 삭제</span>
+        </button>
+      </footer>
+    </section>
+
+    <!-- 항목 추가/수정 모달 -->
+    <div id="modal-item" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-dialog">
+        <h3 id="modal-item-title" class="modal-title">물품 추가</h3>
+        <p id="modal-item-subtitle" class="modal-subtitle">카테고리에 추가할 물품 이름을 입력하세요.</p>
+        <div class="form-group modal-form-group">
+          <input type="text" id="input-modal-item-name" class="form-input" placeholder="예: 잠옷, 수영복, 충전기 등" maxlength="30" autocomplete="off">
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btn-modal-cancel" class="btn btn-secondary">취소</button>
+          <button type="button" id="btn-modal-confirm" class="btn btn-primary">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 확인/삭제 경고 모달 -->
+    <div id="modal-confirm" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-dialog">
+        <div class="modal-warning-icon">⚠️</div>
+        <h3 id="modal-confirm-title" class="modal-title">여행 삭제</h3>
+        <p id="modal-confirm-message" class="modal-subtitle">선택한 여행을 정말 삭제하시겠습니까?<br>삭제된 체크리스트는 복구할 수 없습니다.</p>
+        <div class="modal-actions">
+          <button type="button" id="btn-confirm-cancel" class="btn btn-secondary">취소</button>
+          <button type="button" id="btn-confirm-proceed" class="btn btn-danger">삭제하기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 토스트 알림 메시지 -->
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>

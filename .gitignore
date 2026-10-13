@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Production build outputs (built fresh in GitHub Actions)
+dist/
+
+# Android build outputs
+android/app/build/
+android/.gradle/
+android/build/
+android/captures/
+android/local.properties
+android/*.iml
+android/.idea/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+*.log

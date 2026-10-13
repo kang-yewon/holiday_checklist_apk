@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">여행 체크리스트</string>
+    <string name="title_activity_main">여행 체크리스트</string>
+    <string name="package_name">com.kangyewon.holidaychecklist</string>
+    <string name="custom_url_scheme">com.kangyewon.holidaychecklist</string>
+</resources>

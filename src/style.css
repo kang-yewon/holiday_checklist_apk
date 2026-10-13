@@ -114,8 +114,12 @@ body {
   gap: 8px;
 }
 
-.brand-icon {
-  font-size: 22px;
+.brand-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .brand-title {

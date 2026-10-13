@@ -63,10 +63,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         with:
           files: android/app/build/outputs/apk/debug/app-debug.apk
-          name: 여행 체크리스트 APK 빌드 v${{ github.run_number }}
+          name: 여행 관리 APK 빌드 v${{ github.run_number }}
           tag_name: v1.0.${{ github.run_number }}
           body: |
-            ## ✈️ 여행 체크리스트 (Holiday Checklist) APK 릴리즈
+            ## ✈️ 여행 관리 (Holiday Checklist) APK 릴리즈
 
             - **고정 서명 키 적용**: 이전 앱을 삭제하지 않고도 덮어쓰기 업데이트가 정상 동작합니다.
             - **버전**: v1.0.${{ github.run_number }} (빌드 번호: ${{ github.run_number }})

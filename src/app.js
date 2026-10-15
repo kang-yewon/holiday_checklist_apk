@@ -5,12 +5,21 @@
  */
 
 const STORAGE_KEY = 'holiday_checklist_trips_v1';
+const DEFAULTS_STORAGE_KEY = 'holiday_checklist_defaults_v1';
+
+const INITIAL_DEFAULTS = {
+  clothesDaily: ['속옷', '양말', '상의', '하의'],
+  showerBasic: ['세안제', '로션', '샴푸', '바디워시'],
+  otherBasic: ['생리대']
+};
 
 // --- State Management ---
 let state = {
   trips: [],
+  defaults: null,
   currentTripId: null,
   activeView: 'home',
+  settingsTab: 'defaults',
   
   // Create view temporary state
   createDraft: null,
@@ -19,10 +28,35 @@ let state = {
   selectedTripIds: new Set(),
 
   // Active modal operation
-  modalTarget: null // { mode: 'add'|'edit', category: 'clothes'|'shower'|'other', subType, itemId, isCreate }
+  modalTarget: null,
+  confirmAction: null
 };
 
 // --- Storage Utilities ---
+function loadDefaults() {
+  try {
+    const raw = localStorage.getItem(DEFAULTS_STORAGE_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(INITIAL_DEFAULTS));
+    const parsed = JSON.parse(raw);
+    return {
+      clothesDaily: Array.isArray(parsed.clothesDaily) ? parsed.clothesDaily : [...INITIAL_DEFAULTS.clothesDaily],
+      showerBasic: Array.isArray(parsed.showerBasic) ? parsed.showerBasic : [...INITIAL_DEFAULTS.showerBasic],
+      otherBasic: Array.isArray(parsed.otherBasic) ? parsed.otherBasic : [...INITIAL_DEFAULTS.otherBasic]
+    };
+  } catch (err) {
+    console.error('Failed to load defaults:', err);
+    return JSON.parse(JSON.stringify(INITIAL_DEFAULTS));
+  }
+}
+
+function saveDefaults() {
+  try {
+    localStorage.setItem(DEFAULTS_STORAGE_KEY, JSON.stringify(state.defaults));
+  } catch (err) {
+    console.error('Failed to save defaults:', err);
+  }
+}
+
 function loadTrips() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -43,21 +77,22 @@ function saveTrips() {
 }
 
 // --- Generator Functions ---
-function createDefaultDailyClothes(day) {
-  return [
-    { id: `c-${day}-underwear-${Date.now()}-${Math.random()}`, name: '속옷', checked: false, isCustom: false },
-    { id: `c-${day}-socks-${Date.now()}-${Math.random()}`, name: '양말', checked: false, isCustom: false },
-    { id: `c-${day}-top-${Date.now()}-${Math.random()}`, name: '상의', checked: false, isCustom: false },
-    { id: `c-${day}-bottom-${Date.now()}-${Math.random()}`, name: '하의', checked: false, isCustom: false }
-  ];
+function createDefaultDailyClothes(day, templateList) {
+  const items = templateList || (state.defaults ? state.defaults.clothesDaily : INITIAL_DEFAULTS.clothesDaily);
+  return items.map((itemName, idx) => ({
+    id: `c-${day}-${idx}-${Date.now()}-${Math.random()}`,
+    name: itemName,
+    checked: false,
+    isCustom: false
+  }));
 }
 
-function syncClothesForNights(clothesData, nights) {
+function syncClothesForNights(clothesData, nights, templateList) {
   const daily = { ...(clothesData.daily || {}) };
   // Ensure days 1..nights exist
   for (let d = 1; d <= nights; d++) {
     if (!daily[d] || daily[d].length === 0) {
-      daily[d] = createDefaultDailyClothes(d);
+      daily[d] = createDefaultDailyClothes(d, templateList);
     }
   }
   // Remove days > nights
@@ -95,23 +130,25 @@ function syncTowelsForNights(existingTowels = [], nights) {
 function generateNewTripDraft(name = '', nights = 2) {
   const safeNights = Math.max(1, parseInt(nights, 10) || 1);
   const days = safeNights + 1;
+  const defaults = state.defaults || loadDefaults();
 
-  // Initialize Clothes
-  const clothes = syncClothesForNights({ daily: {}, custom: [] }, safeNights);
+  // Initialize Clothes using current defaults
+  const clothes = syncClothesForNights({ daily: {}, custom: [] }, safeNights, defaults.clothesDaily);
 
-  // Initialize Shower
-  const showerBasic = [
-    { id: `sb-cleanser-${Date.now()}`, name: '세안제', checked: false },
-    { id: `sb-lotion-${Date.now()}`, name: '로션', checked: false },
-    { id: `sb-shampoo-${Date.now()}`, name: '샴푸', checked: false },
-    { id: `sb-bodywash-${Date.now()}`, name: '바디워시', checked: false }
-  ];
+  // Initialize Shower using current defaults
+  const showerBasic = (defaults.showerBasic || []).map((itemName, idx) => ({
+    id: `sb-${idx}-${Date.now()}-${Math.random()}`,
+    name: itemName,
+    checked: false
+  }));
   const showerTowels = syncTowelsForNights([], safeNights);
 
-  // Initialize Other
-  const otherBasic = [
-    { id: `ob-pad-${Date.now()}`, name: '생리대', checked: false }
-  ];
+  // Initialize Other using current defaults
+  const otherBasic = (defaults.otherBasic || []).map((itemName, idx) => ({
+    id: `ob-${idx}-${Date.now()}-${Math.random()}`,
+    name: itemName,
+    checked: false
+  }));
 
   return {
     id: `trip-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -296,7 +333,7 @@ function updateCreateDurationDisplay(nights) {
   if (state.createDraft) {
     state.createDraft.nights = safeNights;
     state.createDraft.days = days;
-    state.createDraft.items.clothes = syncClothesForNights(state.createDraft.items.clothes, safeNights);
+    state.createDraft.items.clothes = syncClothesForNights(state.createDraft.items.clothes, safeNights, state.defaults.clothesDaily);
     state.createDraft.items.shower.towels = syncTowelsForNights(state.createDraft.items.shower.towels, safeNights);
   }
 }
@@ -679,7 +716,9 @@ function handleDetailNightsChange(delta) {
 
   trip.nights = newNights;
   trip.days = newNights + 1;
-  trip.items.clothes = syncClothesForNights(trip.items.clothes, newNights);
+  const existingDay1 = trip.items.clothes && trip.items.clothes.daily && trip.items.clothes.daily[1];
+  const templateList = existingDay1 ? existingDay1.map(i => i.name) : (state.defaults ? state.defaults.clothesDaily : INITIAL_DEFAULTS.clothesDaily);
+  trip.items.clothes = syncClothesForNights(trip.items.clothes, newNights, templateList);
   trip.items.shower.towels = syncTowelsForNights(trip.items.shower.towels, newNights);
   trip.updatedAt = Date.now();
 
@@ -693,12 +732,167 @@ function handleDetailNightsChange(delta) {
 }
 
 // ============================================================
-// 4. SETTINGS / MANAGE VIEW
+// 4. SETTINGS VIEW
 // ============================================================
+function switchSettingsTab(tab) {
+  state.settingsTab = tab;
+  const btnDefaults = document.getElementById('tab-btn-defaults');
+  const btnTrips = document.getElementById('tab-btn-trips');
+  const panelDefaults = document.getElementById('settings-panel-defaults');
+  const panelTrips = document.getElementById('settings-panel-trips');
+  const footer = document.getElementById('settings-footer');
+
+  if (tab === 'defaults') {
+    if (btnDefaults) btnDefaults.classList.add('active');
+    if (btnTrips) btnTrips.classList.remove('active');
+    if (panelDefaults) panelDefaults.classList.add('active');
+    if (panelTrips) panelTrips.classList.remove('active');
+    if (footer) footer.classList.add('hidden');
+    renderSettingsDefaults();
+  } else {
+    if (btnTrips) btnTrips.classList.add('active');
+    if (btnDefaults) btnDefaults.classList.remove('active');
+    if (panelTrips) panelTrips.classList.add('active');
+    if (panelDefaults) panelDefaults.classList.remove('active');
+    if (footer) footer.classList.remove('hidden');
+    renderSettingsTrips();
+  }
+}
+
 function renderSettingsView() {
+  switchSettingsTab(state.settingsTab || 'defaults');
+}
+
+function renderSettingsDefaults() {
+  if (!state.defaults) state.defaults = loadDefaults();
+
+  // 1. Clothes
+  const clothesList = document.getElementById('default-clothes-list');
+  const clothesCount = document.getElementById('default-clothes-count');
+  if (clothesCount) clothesCount.textContent = `${state.defaults.clothesDaily.length}개`;
+  if (clothesList) {
+    clothesList.innerHTML = state.defaults.clothesDaily.map((item, idx) => `
+      <div class="default-item-row" data-cat="clothesDaily" data-idx="${idx}">
+        <span class="default-item-name">${escapeHtml(item)}</span>
+        <div class="item-action-btns">
+          <button type="button" class="item-mini-btn btn-default-edit" data-cat="clothesDaily" data-idx="${idx}" title="수정">✎</button>
+          <button type="button" class="item-mini-btn delete btn-default-delete" data-cat="clothesDaily" data-idx="${idx}" title="삭제">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // 2. Shower
+  const showerList = document.getElementById('default-shower-list');
+  const showerCount = document.getElementById('default-shower-count');
+  if (showerCount) showerCount.textContent = `${state.defaults.showerBasic.length}개`;
+  if (showerList) {
+    showerList.innerHTML = state.defaults.showerBasic.map((item, idx) => `
+      <div class="default-item-row" data-cat="showerBasic" data-idx="${idx}">
+        <span class="default-item-name">${escapeHtml(item)}</span>
+        <div class="item-action-btns">
+          <button type="button" class="item-mini-btn btn-default-edit" data-cat="showerBasic" data-idx="${idx}" title="수정">✎</button>
+          <button type="button" class="item-mini-btn delete btn-default-delete" data-cat="showerBasic" data-idx="${idx}" title="삭제">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // 3. Other
+  const otherList = document.getElementById('default-other-list');
+  const otherCount = document.getElementById('default-other-count');
+  if (otherCount) otherCount.textContent = `${state.defaults.otherBasic.length}개`;
+  if (otherList) {
+    otherList.innerHTML = state.defaults.otherBasic.map((item, idx) => `
+      <div class="default-item-row" data-cat="otherBasic" data-idx="${idx}">
+        <span class="default-item-name">${escapeHtml(item)}</span>
+        <div class="item-action-btns">
+          <button type="button" class="item-mini-btn btn-default-edit" data-cat="otherBasic" data-idx="${idx}" title="수정">✎</button>
+          <button type="button" class="item-mini-btn delete btn-default-delete" data-cat="otherBasic" data-idx="${idx}" title="삭제">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Bind edit buttons
+  document.querySelectorAll('.btn-default-edit').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cat = btn.dataset.cat;
+      const idx = parseInt(btn.dataset.idx, 10);
+      const curName = state.defaults[cat][idx];
+      openDefaultItemModal('edit', cat, idx, curName);
+    });
+  });
+
+  // Bind delete buttons
+  document.querySelectorAll('.btn-default-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cat = btn.dataset.cat;
+      const idx = parseInt(btn.dataset.idx, 10);
+      const curName = state.defaults[cat][idx];
+      confirmDeleteDefaultItem(cat, idx, curName);
+    });
+  });
+}
+
+function openDefaultItemModal(mode, categoryKey, itemIndex, currentName) {
+  state.modalTarget = { isDefault: true, mode, categoryKey, itemIndex };
+
+  const modal = document.getElementById('modal-item');
+  const title = document.getElementById('modal-item-title');
+  const subtitle = document.getElementById('modal-item-subtitle');
+  const input = document.getElementById('input-modal-item-name');
+
+  const catLabels = {
+    clothesDaily: '기본 옷 항목',
+    showerBasic: '기본 샤워도구 항목',
+    otherBasic: '기본 기타 물품'
+  };
+  const label = catLabels[categoryKey] || '기본 물품';
+
+  if (mode === 'add') {
+    title.textContent = `${label} 추가`;
+    subtitle.textContent = '새 여행 체크리스트 생성 시 기본으로 포함될 물품 이름을 입력하세요.';
+    input.value = '';
+  } else {
+    title.textContent = `${label} 수정`;
+    subtitle.textContent = '변경할 기본 물품 이름을 입력하세요.';
+    input.value = currentName || '';
+  }
+
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    input.focus();
+  }, 100);
+}
+
+function confirmDeleteDefaultItem(categoryKey, itemIndex, itemName) {
+  state.confirmAction = () => {
+    state.defaults[categoryKey].splice(itemIndex, 1);
+    saveDefaults();
+    renderSettingsDefaults();
+    showToast(`'${itemName}' 기본 항목이 삭제되었습니다.`);
+    closeConfirmModal();
+  };
+  openConfirmModal(`'${itemName}' 기본 항목을 삭제하시겠습니까?<br><small style="color:#64748B;">이후 새로 생성되는 여행 체크리스트에서는 이 항목이 생성되지 않습니다.</small>`);
+}
+
+function confirmResetDefaults() {
+  state.confirmAction = () => {
+    state.defaults = JSON.parse(JSON.stringify(INITIAL_DEFAULTS));
+    saveDefaults();
+    renderSettingsDefaults();
+    showToast('기본 물품 목록이 앱 초기 상태로 복원되었습니다.');
+    closeConfirmModal();
+  };
+  openConfirmModal(`모든 기본 물품 항목을 앱 초기 설정으로 되돌리시겠습니까?<br><small style="color:#64748B;">기존에 저장된 여행에는 영향을 주지 않습니다.</small>`);
+}
+
+function renderSettingsTrips() {
   const container = document.getElementById('settings-trip-list');
   const emptyState = document.getElementById('settings-empty-state');
-  const deleteBtn = document.getElementById('btn-delete-selected');
   const selectAllCb = document.getElementById('checkbox-select-all');
 
   state.selectedTripIds.clear();
@@ -758,6 +952,7 @@ function renderSettingsView() {
       e.stopPropagation();
       state.selectedTripIds.clear();
       state.selectedTripIds.add(trip.id);
+      state.confirmAction = () => executeTripDeletion();
       openConfirmModal(`'${trip.name}' 여행을 삭제하시겠습니까?`);
     });
 
@@ -803,7 +998,7 @@ function executeTripDeletion() {
 
   showToast(`${count}개의 여행이 삭제되었습니다.`);
   closeConfirmModal();
-  renderSettingsView();
+  renderSettingsTrips();
 }
 
 // ============================================================
@@ -852,6 +1047,23 @@ function handleItemModalConfirm() {
 
   if (!state.modalTarget) return;
 
+  // Handle default item add / edit
+  if (state.modalTarget.isDefault) {
+    const { mode, categoryKey, itemIndex } = state.modalTarget;
+    if (mode === 'add') {
+      state.defaults[categoryKey].push(name);
+      saveDefaults();
+      showToast(`'${name}' 기본 항목이 추가되었습니다.`);
+    } else if (mode === 'edit' && itemIndex !== undefined) {
+      state.defaults[categoryKey][itemIndex] = name;
+      saveDefaults();
+      showToast('기본 항목이 수정되었습니다.');
+    }
+    closeItemModal();
+    renderSettingsDefaults();
+    return;
+  }
+
   const { mode, category, subType, itemId, isCreate } = state.modalTarget;
   const currentTrip = isCreate ? state.createDraft : state.trips.find(t => t.id === state.currentTripId);
   if (!currentTrip) return;
@@ -895,13 +1107,24 @@ function openConfirmModal(message) {
   const modal = document.getElementById('modal-confirm');
   const msgEl = document.getElementById('modal-confirm-message');
   if (message) {
-    msgEl.innerHTML = escapeHtml(message) + '<br>삭제된 체크리스트는 복구할 수 없습니다.';
+    msgEl.innerHTML = message;
   }
   modal.classList.remove('hidden');
 }
 
 function closeConfirmModal() {
   document.getElementById('modal-confirm').classList.add('hidden');
+  state.confirmAction = null;
+}
+
+function executeConfirmProceed() {
+  if (typeof state.confirmAction === 'function') {
+    const action = state.confirmAction;
+    state.confirmAction = null;
+    action();
+  } else {
+    executeTripDeletion();
+  }
 }
 
 // Utility: HTML escape
@@ -921,6 +1144,7 @@ function escapeHtml(str) {
 document.addEventListener('DOMContentLoaded', () => {
   // Load saved data
   state.trips = loadTrips();
+  state.defaults = loadDefaults();
 
   // --- Home Screen Listeners ---
   document.getElementById('btn-start').addEventListener('click', openCreateView);
@@ -959,12 +1183,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Settings Screen Listeners ---
   document.getElementById('btn-settings-back').addEventListener('click', () => switchView('home'));
+  document.getElementById('tab-btn-defaults').addEventListener('click', () => switchSettingsTab('defaults'));
+  document.getElementById('tab-btn-trips').addEventListener('click', () => switchSettingsTab('trips'));
+
+  document.getElementById('btn-add-default-clothes').addEventListener('click', () => openDefaultItemModal('add', 'clothesDaily'));
+  document.getElementById('btn-add-default-shower').addEventListener('click', () => openDefaultItemModal('add', 'showerBasic'));
+  document.getElementById('btn-add-default-other').addEventListener('click', () => openDefaultItemModal('add', 'otherBasic'));
+  document.getElementById('btn-reset-defaults').addEventListener('click', confirmResetDefaults);
+
   document.getElementById('checkbox-select-all').addEventListener('change', (e) => {
     handleSelectAllToggle(e.target.checked);
   });
   document.getElementById('btn-delete-selected').addEventListener('click', () => {
     if (state.selectedTripIds.size > 0) {
-      openConfirmModal(`선택한 ${state.selectedTripIds.size}개의 여행을 삭제하시겠습니까?`);
+      state.confirmAction = () => executeTripDeletion();
+      openConfirmModal(`선택한 ${state.selectedTripIds.size}개의 여행을 삭제하시겠습니까?<br>삭제된 체크리스트는 복구할 수 없습니다.`);
     }
   });
 
@@ -977,7 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-confirm-cancel').addEventListener('click', closeConfirmModal);
-  document.getElementById('btn-confirm-proceed').addEventListener('click', executeTripDeletion);
+  document.getElementById('btn-confirm-proceed').addEventListener('click', executeConfirmProceed);
 
   // Initial render
   renderHomeView();

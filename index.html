@@ -170,7 +170,7 @@
       </main>
     </section>
 
-    <!-- 4. 여행 관리 / 삭제 화면 (Settings) -->
+    <!-- 4. 설정 화면 (Settings) -->
     <section id="view-settings" class="view">
       <header class="app-header sub-header">
         <button id="btn-settings-back" class="icon-btn" aria-label="홈으로 돌아가기">
@@ -178,31 +178,102 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 class="header-title">저장된 여행 관리</h1>
+        <h1 class="header-title">설정</h1>
         <div class="header-placeholder"></div>
       </header>
 
       <main class="view-content settings-content">
-        <div class="settings-toolbar">
-          <label class="select-all-label">
-            <input type="checkbox" id="checkbox-select-all" class="app-checkbox">
-            <span>전체 선택</span>
-          </label>
-          <span id="selected-delete-count" class="selected-count-badge">0개 선택</span>
+        <!-- 설정 탭 전환 바 -->
+        <div class="settings-tabs">
+          <button type="button" id="tab-btn-defaults" class="settings-tab-btn active">⚙️ 기본 물품 설정</button>
+          <button type="button" id="tab-btn-trips" class="settings-tab-btn">🗑️ 저장된 여행 관리</button>
         </div>
 
-        <div id="settings-trip-list" class="settings-trip-list">
-          <!-- 동적으로 렌더링됨 -->
+        <!-- 탭 1: 기본 물품 설정 패널 -->
+        <div id="settings-panel-defaults" class="settings-panel active">
+          <div class="settings-notice-banner">
+            <span class="notice-icon">💡</span>
+            <div class="notice-text">
+              <strong>안내:</strong> 여기서 수정한 기본 물품은 <strong>이후 새로 생성되는 여행 체크리스트</strong>에 자동으로 적용됩니다. 기존에 저장된 여행 체크리스트는 수정되지 않고 안전하게 보존됩니다.
+            </div>
+          </div>
+
+          <!-- 👕 기본 일일 옷 (1박당 생성) -->
+          <div class="category-card default-cat-card">
+            <div class="category-header">
+              <h3 class="category-title"><span>👕</span> 기본 일일 옷 (1박당 생성)</h3>
+              <span id="default-clothes-count" class="category-stats">0개</span>
+            </div>
+            <p class="category-subguide">1박마다 매일 필요한 기본 옷 항목입니다. (예: 2박 시 각 날짜별로 생성)</p>
+            <div id="default-clothes-list" class="default-items-list">
+              <!-- 동적으로 렌더링됨 -->
+            </div>
+            <button type="button" id="btn-add-default-clothes" class="btn-add-item">
+              <span>+ 기본 옷 항목 추가</span>
+            </button>
+          </div>
+
+          <!-- 🛁 기본 샤워도구 -->
+          <div class="category-card default-cat-card">
+            <div class="category-header">
+              <h3 class="category-title"><span>🛁</span> 기본 샤워도구</h3>
+              <span id="default-shower-count" class="category-stats">0개</span>
+            </div>
+            <p class="category-subguide">여행 시작 시 기본으로 포함될 세면용품입니다. (수건은 숙박 일수에 따라 수건 1~N으로 자동 계산됩니다.)</p>
+            <div id="default-shower-list" class="default-items-list">
+              <!-- 동적으로 렌더링됨 -->
+            </div>
+            <button type="button" id="btn-add-default-shower" class="btn-add-item">
+              <span>+ 기본 샤워도구 추가</span>
+            </button>
+          </div>
+
+          <!-- 🎵 기본 기타 물품 -->
+          <div class="category-card default-cat-card">
+            <div class="category-header">
+              <h3 class="category-title"><span>🎵</span> 기본 기타 물품</h3>
+              <span id="default-other-count" class="category-stats">0개</span>
+            </div>
+            <p class="category-subguide">여행 시작 시 기본으로 포함될 개인 물품입니다. (기본값: 생리대)</p>
+            <div id="default-other-list" class="default-items-list">
+              <!-- 동적으로 렌더링됨 -->
+            </div>
+            <button type="button" id="btn-add-default-other" class="btn-add-item">
+              <span>+ 기본 기타 물품 추가</span>
+            </button>
+          </div>
+
+          <!-- 기본값 초기화 버튼 -->
+          <div class="reset-defaults-wrap">
+            <button type="button" id="btn-reset-defaults" class="btn-reset-defaults">
+              <span>↺</span> 기본 물품 원래대로 초기화
+            </button>
+          </div>
         </div>
 
-        <div id="settings-empty-state" class="empty-state-card hidden">
-          <div class="empty-illustration">📂</div>
-          <h3 class="empty-title">관리할 여행이 없습니다.</h3>
-          <p class="empty-desc">새로운 여행 체크리스트를 만들어 보세요.</p>
+        <!-- 탭 2: 저장된 여행 관리 패널 -->
+        <div id="settings-panel-trips" class="settings-panel">
+          <div class="settings-toolbar">
+            <label class="select-all-label">
+              <input type="checkbox" id="checkbox-select-all" class="app-checkbox">
+              <span>전체 선택</span>
+            </label>
+            <span id="selected-delete-count" class="selected-count-badge">0개 선택</span>
+          </div>
+
+          <div id="settings-trip-list" class="settings-trip-list">
+            <!-- 동적으로 렌더링됨 -->
+          </div>
+
+          <div id="settings-empty-state" class="empty-state-card hidden">
+            <div class="empty-illustration">📂</div>
+            <h3 class="empty-title">관리할 여행이 없습니다.</h3>
+            <p class="empty-desc">새로운 여행 체크리스트를 만들어 보세요.</p>
+          </div>
         </div>
       </main>
 
-      <footer class="app-footer">
+      <footer id="settings-footer" class="app-footer hidden">
         <button id="btn-delete-selected" class="btn btn-danger btn-large" disabled>
           <span class="btn-text">선택한 여행 삭제</span>
         </button>
